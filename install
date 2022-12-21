@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# unmount sdcard
+umount_sd=false
+if [[ $umount_sd == true ]]; then
+  SDCARD=$(sm list-volumes | grep -v null | grep public)
+  if [[ $SDCARD == "" ]]; then
+    echo "Unmount SD card option is enabled, but there is no sdcard detected, skipping.."
+    umount_sd=false
+  else
+    echo "Unmount SD card option is enabled, sdcard will be ejected temporary, preventing DSU allocation on SD.."
+    sm unmount $SDCARD
+  fi
+fi
+
+# required prop
+setprop persist.sys.fflag.override.settings_dynamic_system true
+
+# invoke DSU activity
+am start-activity -n com.android.dynsystem/com.android.dynsystem.VerificationActivity -a android.os.image.action.START_INSTALL -d 'file:///storage/emulated/0/Gsi/gsi_gms_arm64-exp-RP1A.200720.009-6720564-c8273882.zip' --el KEY_USERDATA_SIZE 5368709120
+
+echo "DSU installation activity has been started!"
+
+if [[ $umount_sd == true ]]; then
+  echo "Remounting sdcard in 60 secs.."
+  nohup $(sleep 60 && sm mount $SDCARD) >/dev/null 2>&1 &
+fi
